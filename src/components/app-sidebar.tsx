@@ -1,144 +1,173 @@
 "use client"
 
 import * as React from "react"
-
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { FileIcon, ChevronRightIcon, FolderIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  FileIcon,
+  FileCodeIcon,
+  ChevronRightIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  ClipboardCopyIcon,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 
-// This is sample data.
+//! Mock data — replace with real invoke() later
 const data = {
-  changes: [
-    {
-      file: "README.md",
-      state: "M",
-    },
-    {
-      file: "api/hello/route.ts",
-      state: "U",
-    },
-    {
-      file: "app/layout.tsx",
-      state: "M",
-    },
-  ],
   tree: [
-    [
-      "app",
-      [
-        "api",
-        ["hello", ["route.ts"]],
-        "page.tsx",
-        "layout.tsx",
-        ["blog", ["page.tsx"]],
-      ],
-    ],
-    [
-      "components",
-      ["ui", "button.tsx", "card.tsx"],
-      "header.tsx",
-      "footer.tsx",
-    ],
-    ["lib", ["util.ts"]],
-    ["public", "favicon.ico", "vercel.svg"],
-    ".eslintrc.json",
-    ".gitignore",
-    "next.config.js",
-    "tailwind.config.js",
+    ["src", "App.tsx", "main.tsx", "index.css"],
+    ["src-tauri", ["src", "lib.rs", "main.rs"]],
     "package.json",
-    "README.md",
+    "tsconfig.json",
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+type TreeItem = string | TreeItem[]
+
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  selectedFiles: Set<string>
+  onToggleFile: (path: string) => void
+  onExport: () => void
+}
+
+export function AppSidebar({
+  selectedFiles,
+  onToggleFile,
+  onExport,
+  ...props
+}: AppSidebarProps) {
+  const selectedCount = selectedFiles.size
+
   return (
     <Sidebar {...props}>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Changes</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {data.changes.map((item, index) => (
-                <SidebarMenuItem key={index}>
-                  <SidebarMenuButton>
-                    <FileIcon
-                    />
-                    {item.file}
-                  </SidebarMenuButton>
-                  <SidebarMenuBadge>{item.state}</SidebarMenuBadge>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Files</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {data.tree.map((item, index) => (
-                <Tree key={index} item={item} />
+                <Tree
+                  key={index}
+                  item={item}
+                  path=""
+                  selectedFiles={selectedFiles}
+                  onToggleFile={onToggleFile}
+                />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-border p-3 gap-2">
+        {selectedCount > 0 && (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs text-muted-foreground">Selected</span>
+            <Badge variant="secondary" className="text-xs">
+              {selectedCount} {selectedCount === 1 ? "file" : "files"}
+            </Badge>
+          </div>
+        )}
+        <Button
+          className="w-full"
+          size="lg"
+          disabled={selectedCount === 0}
+          onClick={onExport}
+        >
+          <ClipboardCopyIcon data-icon="inline-start" />
+          Export .txt
+        </Button>
+      </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   )
 }
 
-type TreeItem = string | TreeItem[]
+function getFileIcon(name: string) {
+  const ext = name.split(".").pop()
+  const codeExts = ["ts", "tsx", "rs", "js", "jsx", "css", "json", "toml"]
+  return codeExts.includes(ext ?? "") ? (
+    <FileCodeIcon className="size-3.5 text-muted-foreground" />
+  ) : (
+    <FileIcon className="size-3.5 text-muted-foreground" />
+  )
+}
 
-function Tree({ item }: { item: TreeItem }) {
+function Tree({
+  item,
+  path,
+  selectedFiles,
+  onToggleFile,
+}: {
+  item: TreeItem
+  path: string
+  selectedFiles: Set<string>
+  onToggleFile: (path: string) => void
+}) {
   const [name, ...items] = Array.isArray(item) ? item : [item]
+  const fullPath = path ? `${path}/${name}` : String(name)
 
+  // File
   if (!items.length) {
+    const isSelected = selectedFiles.has(fullPath)
     return (
-      <SidebarMenuButton
-        isActive={name === "button.tsx"}
-        className="data-[active=true]:bg-transparent"
-      >
-        <FileIcon
-        />
-        {name}
-      </SidebarMenuButton>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          onClick={() => onToggleFile(fullPath)}
+          className={cn(
+            "hover:bg-muted",
+            isSelected && "bg-primary/10 text-primary hover:bg-primary/20"
+          )}
+        >
+          {getFileIcon(String(name))}
+          <span className="truncate text-xs">{String(name)}</span>
+          {isSelected && <span className="ml-auto text-primary text-xs">✓</span>}
+        </SidebarMenuButton>
+      </SidebarMenuItem>
     )
   }
 
+  // Folder
   return (
     <SidebarMenuItem>
       <Collapsible
         className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
-        defaultOpen={name === "components" || name === "ui"}
+        defaultOpen
       >
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton>
-            <ChevronRightIcon className="transition-transform" />
-            <FolderIcon
-            />
-            {name}
+          <SidebarMenuButton className="hover:bg-muted">
+            <ChevronRightIcon className="size-3.5 transition-transform text-muted-foreground" />
+            <FolderIcon className="size-3.5 text-muted-foreground group-data-[state=open]/collapsible:hidden" />
+            <FolderOpenIcon className="size-3.5 text-muted-foreground hidden group-data-[state=open]/collapsible:block" />
+            <span className="truncate text-xs font-medium">{String(name)}</span>
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <SidebarMenuSub>
             {items.map((subItem, index) => (
-              <Tree key={index} item={subItem} />
+              <Tree
+                key={index}
+                item={subItem as TreeItem}
+                path={fullPath}
+                selectedFiles={selectedFiles}
+                onToggleFile={onToggleFile}
+              />
             ))}
           </SidebarMenuSub>
         </CollapsibleContent>

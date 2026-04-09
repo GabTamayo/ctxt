@@ -1,35 +1,42 @@
 import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { Button } from "./components/ui/button";
-import { Input } from "./components/ui/input";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  function handleToggleFile(path: string) {
+    setSelectedFiles(prev => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      return next;
+    });
+  }
+
+  function handleExport() {
+    // wire to Rust invoke() later
+    console.log("Exporting:", Array.from(selectedFiles));
   }
 
   return (
-    <main className="flex flex-col items-center justify-center h-screen gap-6">
-      <h1 className="text-4xl tracking-wide">Welcome to ctx</h1>
+    <SidebarProvider>
+      <AppSidebar
+        selectedFiles={selectedFiles}
+        onToggleFile={handleToggleFile}
+        onExport={handleExport}
+      />
+      <SidebarInset>
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+        </header>
 
-      <div className="flex gap-2 w-full max-w-sm">
-        <Input
-          placeholder="Enter a name..."
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && greet()}
-        />
-        <Button onClick={greet}>Greet</Button>
-      </div>
-
-      {greetMsg && (
-        <p className="text-sm">{greetMsg}</p>
-      )}
-    </main>
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
+          <p className="text-sm text-muted-foreground">
+            Select files from the sidebar to export
+          </p>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
