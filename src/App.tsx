@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 
