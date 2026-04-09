@@ -15,7 +15,7 @@ function App() {
 
   return (
     <main className="flex flex-col items-center justify-center h-screen gap-6">
-      <h1 className="text-2xl font-bold">Welcome to ctx</h1>
+      <h1 className="text-4xl tracking-wide">Welcome to ctx</h1>
 
       <div className="flex gap-2 w-full max-w-sm">
         <Input
@@ -28,7 +28,7 @@ function App() {
       </div>
 
       {greetMsg && (
-        <p className="text-sm text-muted-foreground">{greetMsg}</p>
+        <p className="text-sm">{greetMsg}</p>
       )}
     </main>
   );
