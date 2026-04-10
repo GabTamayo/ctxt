@@ -24,6 +24,7 @@ import {
   FolderIcon,
   FolderOpenIcon,
   ClipboardCopyIcon,
+  FolderOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -40,12 +41,16 @@ const data = {
 type TreeItem = string | TreeItem[]
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  isFolderOpened: boolean
+  onOpenFolder: () => void
   selectedFiles: Set<string>
   onToggleFile: (path: string) => void
   onExport: () => void
 }
 
 export function AppSidebar({
+  isFolderOpened,
+  onOpenFolder,
   selectedFiles,
   onToggleFile,
   onExport,
@@ -56,22 +61,37 @@ export function AppSidebar({
   return (
     <Sidebar {...props}>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Files</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {data.tree.map((item, index) => (
-                <Tree
-                  key={index}
-                  item={item}
-                  path=""
-                  selectedFiles={selectedFiles}
-                  onToggleFile={onToggleFile}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {!isFolderOpened ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>No Folder Opened</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <Button
+                className="w-full"
+                onClick={onOpenFolder}
+              >
+                <FolderOpen data-icon="inline-start" />
+                Open folder
+              </Button>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel>Files</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {data.tree.map((item, index) => (
+                  <Tree
+                    key={index}
+                    item={item}
+                    path=""
+                    selectedFiles={selectedFiles}
+                    onToggleFile={onToggleFile}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-3 gap-2">
