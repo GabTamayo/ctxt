@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -9,6 +7,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import {
   FileIcon,
   FileCodeIcon,
@@ -25,41 +25,62 @@ import {
   FolderOpenIcon,
   ClipboardCopyIcon,
   FolderOpen,
+  FolderSyncIcon,
+  Loader2Icon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-//! Mock data — replace with real invoke() later
-const data = {
-  tree: [
-    ["src", "App.tsx", "main.tsx", "index.css"],
-    ["src-tauri", ["src", "lib.rs", "main.rs"]],
-    "package.json",
-    "tsconfig.json",
-  ],
-}
-
-type TreeItem = string | TreeItem[]
+import type { FileNode } from "@/types/types";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  isFolderOpened: boolean
-  onOpenFolder: () => void
-  selectedFiles: Set<string>
-  onToggleFile: (path: string) => void
-  onExport: () => void
+  folderPath: string | null;
+  onOpenFolder: () => void;
+  onChangeFolder: () => void;
+  selectedFiles: Set<string>;
+  onToggleFile: (path: string) => void;
+  onExport: () => void;
+  fileTree: FileNode[];
+  onExpandFolder: (path: string) => void;
+  isScanning: boolean;
 }
 
-export function AppSidebar({
-  isFolderOpened,
+export const AppSidebar = React.memo(({
+  folderPath,
   onOpenFolder,
+  onChangeFolder,
   selectedFiles,
   onToggleFile,
   onExport,
+  fileTree,
+  onExpandFolder,
+  isScanning,
   ...props
-}: AppSidebarProps) {
+}: AppSidebarProps) => {
   const selectedCount = selectedFiles.size
+  const isFolderOpened = !!folderPath
 
   return (
     <Sidebar {...props}>
+      {isFolderOpened && (
+        <SidebarHeader className="border-b border-border px-3 py-2 gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground truncate">
+              {folderPath?.split("/").pop() ?? "Project"}
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" onClick={onChangeFolder}>
+                  <FolderSyncIcon />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Change folder</TooltipContent>
+            </Tooltip>
+          </div>
+          {isScanning && (
+            <Progress value={undefined} className="h-0.5" />
+          )}
+        </SidebarHeader>
+      )}
       <SidebarContent>
         {!isFolderOpened ? (
           <SidebarGroup>
@@ -68,8 +89,9 @@ export function AppSidebar({
               <Button
                 className="w-full"
                 onClick={onOpenFolder}
+                disabled={isScanning}
               >
-                <FolderOpen data-icon="inline-start" />
+                {isScanning ? <Loader2Icon className="animate-spin" /> : <FolderOpen data-icon="inline-start" />}
                 Open folder
               </Button>
             </SidebarGroupContent>
@@ -79,13 +101,13 @@ export function AppSidebar({
             <SidebarGroupLabel>Files</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {data.tree.map((item, index) => (
-                  <Tree
-                    key={index}
-                    item={item}
-                    path=""
+                {fileTree.map((node) => (
+                  <TreeNode
+                    key={node.path}
+                    node={node}
                     selectedFiles={selectedFiles}
                     onToggleFile={onToggleFile}
+                    onExpand={onExpandFolder}
                   />
                 ))}
               </SidebarMenu>
@@ -117,7 +139,7 @@ export function AppSidebar({
       <SidebarRail />
     </Sidebar>
   )
-}
+})
 
 function getFileIcon(name: string) {
   const ext = name.split(".").pop()
@@ -129,69 +151,81 @@ function getFileIcon(name: string) {
   )
 }
 
-function Tree({
-  item,
-  path,
+const TreeNode = React.memo(({
+  node,
   selectedFiles,
   onToggleFile,
+  onExpand,
 }: {
-  item: TreeItem
-  path: string
-  selectedFiles: Set<string>
-  onToggleFile: (path: string) => void
-}) {
-  const [name, ...items] = Array.isArray(item) ? item : [item]
-  const fullPath = path ? `${path}/${name}` : String(name)
-
-  // File
-  if (!items.length) {
-    const isSelected = selectedFiles.has(fullPath)
+  node: FileNode;
+  selectedFiles: Set<string>;
+  onToggleFile: (path: string) => void;
+  onExpand: (path: string) => void;
+}) => {
+  if (!node.is_dir) {
+    const isSelected = selectedFiles.has(node.path);
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
-          onClick={() => onToggleFile(fullPath)}
+          onClick={() => onToggleFile(node.path)}
           className={cn(
             "hover:bg-muted",
             isSelected && "bg-primary/10 text-primary hover:bg-primary/20"
           )}
         >
-          {getFileIcon(String(name))}
-          <span className="truncate text-xs">{String(name)}</span>
+          {getFileIcon(node.name)}
+          <span className="truncate text-xs">{node.name}</span>
           {isSelected && <span className="ml-auto text-primary text-xs">✓</span>}
         </SidebarMenuButton>
       </SidebarMenuItem>
-    )
+    );
   }
 
-  // Folder
+  const handleOpenChange = (open: boolean) => {
+    if (open && !node.children && !node.loading) {
+      onExpand(node.path);
+    }
+  };
+
   return (
     <SidebarMenuItem>
       <Collapsible
         className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
-        defaultOpen
+        onOpenChange={handleOpenChange}
       >
         <CollapsibleTrigger asChild>
           <SidebarMenuButton className="hover:bg-muted">
             <ChevronRightIcon className="size-3.5 transition-transform text-muted-foreground" />
-            <FolderIcon className="size-3.5 text-muted-foreground group-data-[state=open]/collapsible:hidden" />
-            <FolderOpenIcon className="size-3.5 text-muted-foreground hidden group-data-[state=open]/collapsible:block" />
-            <span className="truncate text-xs font-medium">{String(name)}</span>
+            {node.loading ? (
+              <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <FolderIcon className="size-3.5 text-muted-foreground group-data-[state=open]/collapsible:hidden" />
+                <FolderOpenIcon className="size-3.5 text-muted-foreground hidden group-data-[state=open]/collapsible:block" />
+              </>
+            )}
+            <span className="truncate text-xs font-medium">{node.name}</span>
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <SidebarMenuSub>
-            {items.map((subItem, index) => (
-              <Tree
-                key={index}
-                item={subItem as TreeItem}
-                path={fullPath}
+            {node.children?.map((child) => (
+              <TreeNode
+                key={child.path}
+                node={child}
                 selectedFiles={selectedFiles}
                 onToggleFile={onToggleFile}
+                onExpand={onExpand}
               />
             ))}
+            {!node.children && node.loading && (
+              <div className="px-2 py-1">
+                <Progress value={undefined} className="h-0.5" />
+              </div>
+            )}
           </SidebarMenuSub>
         </CollapsibleContent>
       </Collapsible>
     </SidebarMenuItem>
-  )
-}
+  );
+})
