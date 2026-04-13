@@ -39,12 +39,12 @@ Instead of manually copy-pasting individual files, **ctxt** allows you to browse
 
 2. Install dependencies:
    ```bash
-   npm install
+   bun install
    ```
 
 3. Run the app in development mode:
    ```bash
-   npm run tauri dev
+   bun tauri dev
    ```
 
 ### Building for Production
@@ -52,7 +52,7 @@ Instead of manually copy-pasting individual files, **ctxt** allows you to browse
 To create a production-ready bundle for your OS:
 
 ```bash
-npm run tauri build
+bun tauri build
 ```
 
 The installer will be located in `src-tauri/target/release/bundle/`.
