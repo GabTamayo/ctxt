@@ -4,8 +4,6 @@
 
 Instead of manually copy-pasting individual files, **ctxt** allows you to browse your project, select exactly what you need, and export it all into a single, well-formatted text file.
 
-![Screenshot of ctxt](https://via.placeholder.com/800x450?text=ctxt+App+Interface) *(Note: Add a real screenshot here)*
-
 ## ✨ Features
 
 - 📂 **Incremental Folder Walking**: Quickly browse through large projects with lazy-loading directory trees.
