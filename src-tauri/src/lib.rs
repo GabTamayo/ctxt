@@ -6,7 +6,6 @@ struct FileNode {
     name: String,
     path: String,
     is_dir: bool,
-    // We don't need to return children here because we lazy-load them on the frontend
 }
 
 #[tauri::command]
@@ -53,12 +52,17 @@ async fn read_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn write_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![walk_directory, read_file])
+        .invoke_handler(tauri::generate_handler![walk_directory, read_file, write_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
